@@ -35,17 +35,19 @@ class SearchEngineTest {
     }
 
     @Test
-    void findDocumentTest4Step() {
+    void findDocumentTest456Step() {
         var doc1 = "I can't shoot straight unless I've had a pint!";
         var doc2 = "Don't shoot shoot shoot that thing at me.";
         var doc3 = "I'm your shooter.";
+        var doc4 = "Don't shoot shoot that thing at me.";
 
         List<Map<String, String>> docs = List.of(
             Map.of("id", "doc1", "text", doc1),
             Map.of("id", "doc2", "text", doc2),
-            Map.of("id", "doc3", "text", doc3)
+            Map.of("id", "doc3", "text", doc3),
+            Map.of("id", "doc4", "text", doc4)
         );
 
-        Assertions.assertIterableEquals(List.of("doc2", "doc1"), SearchEngine.search(docs, "shoot at me"));
+        Assertions.assertIterableEquals(List.of("doc2", "doc4", "doc1"), SearchEngine.search(docs, "shoot at me"));
     }
 }
