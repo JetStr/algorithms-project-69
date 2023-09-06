@@ -13,49 +13,66 @@ public class SearchEngine {
             return Collections.emptyList();
         }
 
-        return docs.stream()
-            .filter(document -> document.get("text") != null)
-            .map(document ->
-                new TempDocument(
-                    document.get("id"),
-                    document.get("text"),
-                    binarySearch(document.get("text").split(" "), searchValue.split(" "))
-                )
-            )
-            .filter(temp -> temp.getSearchResult().getOccurrences() > 0)
-            .sorted((o1, o2) -> {
-                SearchResult searchResult1 = o1.getSearchResult();
-                SearchResult searchResult2 = o2.getSearchResult();
-                int compare = Boolean.compare(searchResult2.isFoundAll(), searchResult1.isFoundAll());
-                if (compare != 0) {
-                    return compare;
-                }
+        //make reverse index
+        Map<String, List<String>> reversedIndex = buildReversedIndex(docs);
 
-                return Integer.compare(searchResult2.getOccurrences(), searchResult1.getOccurrences());
-            })
-            .map(temp -> temp.toDocument().get("id"))
+        //search for values
+        List<String> processedSearchValues = Arrays.stream(searchValue.split(" "))
+            .map(SearchEngine::processString)
             .toList();
-    }
-
-    private static SearchResult binarySearch(String[] strArray, String[] searchValueArray) {
-        String[] processedArray = Arrays.stream(strArray)
-            .map(SearchEngine::processString)
-            .sorted()
-            .toArray(String[]::new);
-        String[] processedSearchValueArray = Arrays.stream(searchValueArray)
-            .map(SearchEngine::processString)
-            .toArray(String[]::new);
-
-        int occurrences = 0;
-        Set<String> foundWords = new HashSet<>();
-        for (String searchValue : processedSearchValueArray) {
-            int result = Arrays.binarySearch(processedArray, searchValue);
-            if (result > 0) {
-                occurrences += 1;
-                foundWords.add(searchValue);
+        List<String> foundIds = new ArrayList<>();
+        for (String processedSearchValue : processedSearchValues) {
+            List<String> documentIds = reversedIndex.get(processedSearchValue);
+            if (documentIds != null) {
+                foundIds.addAll(documentIds);
             }
         }
-        return new SearchResult(occurrences, foundWords.size() == searchValueArray.length);
+
+        //count occurrences of document ids
+        Map<String, Integer> map = new HashMap<>();
+        for (String s : foundIds) {
+            if (map.containsKey(s)) {
+                map.put(s, map.get(s) + 1);
+            } else {
+                map.put(s, 1);
+            }
+        }
+
+        //desc sort and return
+        List<Map.Entry<String, Integer>> entries = map.entrySet().stream()
+            .sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+            .toList();
+        return entries.stream().map(Map.Entry::getKey).toList();
+    }
+
+    private static Map<String, List<String>> buildReversedIndex(List<Map<String, String>> docs) {
+         Map<String, List<String>> reversedIndex = new HashMap<>();
+
+        for (Map<String, String> doc : docs) {
+            String id = doc.get("id");
+            String text = doc.get("text");
+            if (text == null || text.isEmpty()) {
+                continue;
+            }
+
+            List<String> processedDocument = Arrays.stream(text.split(" "))
+                .map(SearchEngine::processString)
+                .sorted()
+                .toList();
+
+            for (String s : processedDocument) {
+                List<String> docIds = reversedIndex.get(s);
+                if (docIds == null) {
+                    List<String> value = new ArrayList<>();
+                    value.add(id);
+                    reversedIndex.put(s, value);
+                } else {
+                    docIds.add(id);
+                }
+            }
+        }
+
+        return reversedIndex;
     }
 
     private static String processString(String s) {
