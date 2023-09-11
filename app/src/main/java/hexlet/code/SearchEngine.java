@@ -52,7 +52,7 @@ public class SearchEngine {
          Map<String, List<String>> processedDocs = new HashMap<>();
 
         for (Map<String, String> doc : docs) {
-            processedDocs.put(doc.get("id"), Arrays.stream(doc.get("text").split(" "))
+            processedDocs.put(doc.get("id"), Arrays.stream(doc.get("text").split("[\\s_]"))
                 .map(SearchEngine::processString)
                 .sorted()
                 .toList());
